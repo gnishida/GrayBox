@@ -10,7 +10,7 @@
 typedef struct {
 	int m;
 	real *y;
-	cv::Mat_<double> X;
+	//cv::Mat_<double> X;
 	cv::Mat_<double> U;
 	cv::Mat_<double> C;
 	cv::Mat_<double> D;
@@ -36,7 +36,7 @@ public:
 
 class GrayBox {
 public:
-	cv::Mat_<double> X;
+	//cv::Mat_<double> X;
 	cv::Mat_<double> U;
 	cv::Mat_<double> Y;
 	cv::Mat_<double> A;

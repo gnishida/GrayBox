@@ -42,7 +42,8 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	}
 
 	// build matrix A and B
-	cv::Mat_<double> A(4, 4), B(4, 3);
+	cv::Mat_<double> A(4, 4, 0.0);
+	cv::Mat_<double> B(4, 3, 0.0);
 	A(0, 0) = -1.0 / x[5] / x[0] - 1.0 / x[5] / x[1];										// -1/Ce/R1 - 1/Ce/R2
 	A(0, 1) = 1.0 / x[5] / x[1];															// 1/Ce/R2
 	A(1, 0) = 1.0 / x[6] / x[1];															// 1/Cp/R2
@@ -60,7 +61,7 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	B(1, 1) = ((fcndata_t*)p)->Ap * 0.6 / x[6];												// Ap*0.6/Cp
 	B(1, 2) = 1.0 / x[4] / x[6];															// 1/Ce/R1
 	B(2, 0) = ((fcndata_t*)p)->P * ((fcndata_t*)p)->H * ((fcndata_t*)p)->W / x[7];			// PHW/Ci
-	B(2, 1) = ((fcndata_t*)p)->Ap * 0.4 / 2.0 / x[7];										// Ap*0.4/2/Ci
+	B(2, 1) = ((fcndata_t*)p)->Ap * 0.4 / 2.0 / x[7] + ((fcndata_t*)p)->Ac * 0.3 / x[7];	// Ap*0.4/2/Ci + Ac*0.3/Ci
 	B(3, 1) = ((fcndata_t*)p)->Ac * 0.7 / x[8];												// Ac*0.7/Cc
 
 	// Xの初期化
@@ -70,17 +71,28 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	}
 	
 	// 真値と観測データの差を計算する
-	for (int t = 0; t < ((fcndata_t*)p)->U.rows; ++t) {
+	for (int t = 0; t < ((fcndata_t*)p)->U.cols; ++t) {
+		//////////////// DEBUG //////////////////////////////////////////////////
+		/*
+		std::cout << "A: " << A << std::endl;
+		std::cout << "B: " << B << std::endl;
+		std::cout << "U: " << ((fcndata_t*)p)->U.col(t) << std::endl;
+		*/
+
 		// dx/dt = Ax + Bu
 		cv::Mat_<double> dX = A * X + B * ((fcndata_t*)p)->U.col(t);
 		X += dX * 3600; // 1 hour = 3600 sec
+
+		//////////////// DEBUG //////////////////////////////////////////////////
+		//std::cout << dX << std::endl;
+		//std::cout << X << std::endl;
 
 		// y = Cx + Du
 		cv::Mat_<double> Y = ((fcndata_t*)p)->C * X + ((fcndata_t*)p)->D * ((fcndata_t*)p)->U.col(t);
 
 		// 誤差を格納する
 		for (int k = 0; k < 2; ++k) {
-			fvec[t * 2 + k] = y[t * 2 + k] - Y(k, 0);
+			fvec[t * 2 + k] = SQR(y[t * 2 + k] - Y(k, 0));
 		}
 	}
 
@@ -126,7 +138,7 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		sim_file.close();
 
 		// copy the dataset to X, U, and Y
-		X = cv::Mat_<double>(4, dataset.size());
+		//X = cv::Mat_<double>(4, dataset.size());
 		U = cv::Mat_<double>(3, dataset.size());
 		Y = cv::Mat_<double>(2, dataset.size());
 
@@ -192,11 +204,15 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		ranges["R2"] = Range(values[18] * 5.0 / 9.0 / 0.293071, values[19] * 5.0 / 9.0 / 0.293071);
 		ranges["R3"] = Range(values[20] * 5.0 / 9.0 / 0.293071, values[21] * 5.0 / 9.0 / 0.293071);
 		ranges["R4"] = Range(values[22] * 5.0 / 9.0 / 0.293071, values[23] * 5.0 / 9.0 / 0.293071);
-		//ranges["Rwin"] = ??
+		ranges["Rwin"] = Range(values[24] * 5.0 / 9.0 / 0.293071, values[25] * 5.0 / 9.0 / 0.293071);
 	}
 }
 
 void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rwin, double& Ce, double& Cp, double& Ci, double& Cc) {
+	std::cout << "///////////////////////////////////////////////////////////" << std::endl;
+	std::cout << "Inverse computation" << std::endl;
+	std::cout << "initial values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Rwin=" << Rwin << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
+
 	// パラメータの数
 	const int NUM_PARAMS = 9;
 
@@ -242,7 +258,7 @@ void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rw
 	fcndata_t data;
 	data.m = m;
 	data.y = y;
-	data.X = X;
+	//data.X = X;
 	data.U = U;
 	data.C = C;
 	data.D = D;
@@ -281,6 +297,19 @@ void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rw
 	printf(" final l2 norm of the residuals%15.7g\n\n", (double)fnorm);
 	printf(" number of function evaluations%10i\n\n", nfev);
 	printf(" exit parameter %10i\n\n", info);
+
+	// 結果を格納する
+	R1 = x[0];
+	R2 = x[1];
+	R3 = x[2];
+	R4 = x[3];
+	Rwin = x[4];
+	Ce = x[5];
+	Cp = x[6];
+	Ci = x[7];
+	Cc = x[8];
+
+	std::cout << "result values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Rwin=" << Rwin << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
 
 	// メモリ解放
 	delete[] y;
