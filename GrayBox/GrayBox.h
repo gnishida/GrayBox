@@ -19,9 +19,11 @@ typedef struct {
 	double Ac;				// area of core zone
 	double H;				// height
 	double P;				// perimeter
+	double Rwin;			// Rwin;
 } fcndata_t;
 
 int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag);
+void buildMatrices(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, double W, double Ap, double Ac, double H, double P, double Rwin, cv::Mat_<double>& A, cv::Mat_<double>& B);
 
 class Range {
 public:
@@ -32,6 +34,22 @@ public:
 public:
 	Range();
 	Range(double minimum, double maximum);
+};
+
+class GrayBoxResult {
+public:
+	double fnorm;
+	double R1;
+	double R2;
+	double R3;
+	double R4;
+	double Ce;
+	double Cp;
+	double Ci;
+	double Cc;
+
+public:
+	GrayBoxResult(double fnorm, double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc);
 };
 
 class GrayBox {
@@ -49,13 +67,14 @@ public:
 	double Ac;				// area of core zone
 	double H;				// height
 	double P;				// perimeter
+	double Rwin;			// Rwin
 
 public:
 	GrayBox();
 
 	void loadTrainingData(const std::string& simulation_filename, const std::string& range_filename);
-	void inverse(double& R1, double& R2, double& R3, double& R4, double& Rwin, double& Ce, double& Cp, double& Ci, double& Cc);
-	void forward(cv::Mat_<double>& predictedY);
+	GrayBoxResult inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc);
+	void forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY);
 };
 
 

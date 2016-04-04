@@ -4,6 +4,7 @@
 
 #define SQR(x)					((x) * (x))
 #define	Feet2Meter(x)			((x) * 0.3048)
+#define C2K(x)					((x) + 273.15)
 
 Range::Range() {
 	this->minimum = 0;
@@ -15,6 +16,18 @@ Range::Range(double minimum, double maximum) {
 	this->minimum = minimum;
 	this->maximum = maximum;
 	this->step = (maximum - minimum) / 4.0;
+}
+
+GrayBoxResult::GrayBoxResult(double fnorm, double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc) {
+	this->fnorm = fnorm;
+	this->R1 = R1;
+	this->R2 = R2;
+	this->R3 = R3;
+	this->R4 = R4;
+	this->Ce = Ce;
+	this->Cp = Cp;
+	this->Ci = Ci;
+	this->Cc = Cc;
 }
 
 /**
@@ -30,7 +43,6 @@ Range::Range(double minimum, double maximum) {
 */
 int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	const real *y = ((fcndata_t*)p)->y;
-	//assert(m == 15 && n == 3);
 
 	if (iflag == 0) {
 		/* insert print statements here when nprint is positive. */
@@ -44,30 +56,33 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	// build matrix A and B
 	cv::Mat_<double> A(4, 4, 0.0);
 	cv::Mat_<double> B(4, 3, 0.0);
-	A(0, 0) = -1.0 / x[5] / x[0] - 1.0 / x[5] / x[1];										// -1/Ce/R1 - 1/Ce/R2
-	A(0, 1) = 1.0 / x[5] / x[1];															// 1/Ce/R2
-	A(1, 0) = 1.0 / x[6] / x[1];															// 1/Cp/R2
-	A(1, 1) = -1.0 / x[1] / x[6] - 1.0 / x[2] / x[6] - 1.0 / x[4] / x[6];					// -1/R2Cp - 1/R3/Cp - 1/Rwin/Cp
-	A(1, 2) = 1.0 / x[2] / x[6];															// 1/Cp/R3
-	A(2, 1) = 1.0 / x[2] / x[7];															// 1/Ci/R3
-	A(2, 2) = -1.0 / x[2] / x[7] - 1.0 / x[3] / x[7];										// -1/Ci/R3 - 1/Ci/R4
-	A(2, 3) = 1.0 / x[3] / x[7];															// 1/Ci/R4
-	A(3, 2) = 1.0 / x[3] / x[8];															// 1/Cc/R4
-	A(3, 3) = -1.0 / x[3] / x[8];															// -1/Cc/R4
+	buildMatrices(x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], ((fcndata_t*)p)->W, ((fcndata_t*)p)->Ap, ((fcndata_t*)p)->Ac, ((fcndata_t*)p)->H, ((fcndata_t*)p)->P, ((fcndata_t*)p)->Rwin, A, B);
+	/*
+	A(0, 0) = -1.0 / x[4] / x[0] - 1.0 / x[4] / x[1];										// -1/Ce/R1 - 1/Ce/R2
+	A(0, 1) = 1.0 / x[4] / x[1];															// 1/Ce/R2
+	A(1, 0) = 1.0 / x[5] / x[1];															// 1/Cp/R2
+	A(1, 1) = -1.0 / x[1] / x[5] - 1.0 / x[2] / x[5] - 1.0 / ((fcndata_t*)p)->Rwin / x[5];	// -1/R2Cp - 1/R3/Cp - 1/Rwin/Cp
+	A(1, 2) = 1.0 / x[2] / x[5];															// 1/Cp/R3
+	A(2, 1) = 1.0 / x[2] / x[6];															// 1/Ci/R3
+	A(2, 2) = -1.0 / x[2] / x[6] - 1.0 / x[3] / x[6];										// -1/Ci/R3 - 1/Ci/R4
+	A(2, 3) = 1.0 / x[3] / x[6];															// 1/Ci/R4
+	A(3, 2) = 1.0 / x[3] / x[7];															// 1/Cc/R4
+	A(3, 3) = -1.0 / x[3] / x[7];															// -1/Cc/R4
 
-	B(0, 0) = ((fcndata_t*)p)->P * ((fcndata_t*)p)->H * (1.0 - ((fcndata_t*)p)->W) / x[5];	// PH(1-W)/Ce
-	B(0, 1) = ((fcndata_t*)p)->Ap * 0.4 / 2.0 / x[5];										// Ap*0.4/2/Ce
-	B(0, 2) = 1.0 / x[0] / x[5];															// 1/Ce/R1
-	B(1, 1) = ((fcndata_t*)p)->Ap * 0.6 / x[6];												// Ap*0.6/Cp
-	B(1, 2) = 1.0 / x[4] / x[6];															// 1/Ce/R1
-	B(2, 0) = ((fcndata_t*)p)->P * ((fcndata_t*)p)->H * ((fcndata_t*)p)->W / x[7];			// PHW/Ci
-	B(2, 1) = ((fcndata_t*)p)->Ap * 0.4 / 2.0 / x[7] + ((fcndata_t*)p)->Ac * 0.3 / x[7];	// Ap*0.4/2/Ci + Ac*0.3/Ci
-	B(3, 1) = ((fcndata_t*)p)->Ac * 0.7 / x[8];												// Ac*0.7/Cc
+	B(0, 0) = ((fcndata_t*)p)->P * ((fcndata_t*)p)->H * (1.0 - ((fcndata_t*)p)->W) / x[4];	// PH(1-W)/Ce
+	B(0, 1) = ((fcndata_t*)p)->Ap * 0.4 / 2.0 / x[4];										// Ap*0.4/2/Ce
+	B(0, 2) = 1.0 / x[0] / x[4];															// 1/Ce/R1
+	B(1, 1) = ((fcndata_t*)p)->Ap * 0.6 / x[5];												// Ap*0.6/Cp
+	B(1, 2) = 1.0 / x[5] / ((fcndata_t*)p)->Rwin;											// 1/Cp/Rwin
+	B(2, 0) = ((fcndata_t*)p)->P * ((fcndata_t*)p)->H * ((fcndata_t*)p)->W / x[6];			// PHW/Ci
+	B(2, 1) = ((fcndata_t*)p)->Ap * 0.4 / 2.0 / x[6] + ((fcndata_t*)p)->Ac * 0.3 / x[6];	// Ap*0.4/2/Ci + Ac*0.3/Ci
+	B(3, 1) = ((fcndata_t*)p)->Ac * 0.7 / x[7];												// Ac*0.7/Cc
+	*/
 
 	// Xの初期化
 	cv::Mat_<double> X(4, 1);
 	for (int i = 0; i < 4; ++i) {
-		X(i, 0) = 20 + 273.15;
+		X(i, 0) = C2K(20);
 	}
 	
 	// 真値と観測データの差を計算する
@@ -84,11 +99,15 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 		X += dX * 3600; // 1 hour = 3600 sec
 
 		//////////////// DEBUG //////////////////////////////////////////////////
-		//std::cout << dX << std::endl;
-		//std::cout << X << std::endl;
+		/*
+		std::cout << dX << std::endl;
+		std::cout << X << std::endl;
+		*/
 
 		// y = Cx + Du
 		cv::Mat_<double> Y = ((fcndata_t*)p)->C * X + ((fcndata_t*)p)->D * ((fcndata_t*)p)->U.col(t);
+
+		//std::cout << "y0: " << Y(0, 0) << " (True: " << y[t * 2] << "), y1: " << Y(1, 0) << " (True: " << y[t * 2 + 1] << ")" << std::endl;
 
 		// 誤差を格納する
 		for (int k = 0; k < 2; ++k) {
@@ -97,6 +116,34 @@ int fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	}
 
 	return 0;
+}
+
+/**
+ * Build matrix A and B
+ */
+void buildMatrices(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, double W, double Ap, double Ac, double H, double P, double Rwin, cv::Mat_<double>& A, cv::Mat_<double>& B) {
+	A = cv::Mat_<double>(4, 4, 0.0);
+	B = cv::Mat_<double>(4, 3, 0.0);
+
+	A(0, 0) = -1.0 / Ce / R1 - 1.0 / Ce / R2;					// -1/Ce/R1 - 1/Ce/R2
+	A(0, 1) = 1.0 / Ce / R2;									// 1/Ce/R2
+	A(1, 0) = 1.0 / Cp / R2;									// 1/Cp/R2
+	A(1, 1) = -1.0 / R2 / Cp - 1.0 / R3 / Cp - 1.0 / Rwin / Cp;	// -1/R2Cp - 1/R3/Cp - 1/Rwin/Cp
+	A(1, 2) = 1.0 / R3 / Cp;									// 1/Cp/R3
+	A(2, 1) = 1.0 / R3 / Ci;									// 1/Ci/R3
+	A(2, 2) = -1.0 / R3 / Ci - 1.0 / R4 / Ci;					// -1/Ci/R3 - 1/Ci/R4
+	A(2, 3) = 1.0 / R4 / Ci;									// 1/Ci/R4
+	A(3, 2) = 1.0 / R4 / Cc;									// 1/Cc/R4
+	A(3, 3) = -1.0 / R4 / Cc;									// -1/Cc/R4
+
+	B(0, 0) = P * H * (1.0 - W) / Ce;						// PH(1-W)/Ce
+	B(0, 1) = Ap * 0.4 / 2.0 / Ce;								// Ap*0.4/2/Ce
+	B(0, 2) = 1.0 / R1 / Ce;									// 1/Ce/R1
+	B(1, 1) = Ap * 0.6 / Cp;									// Ap*0.6/Cp
+	B(1, 2) = 1.0 / Cp / Rwin;									// 1/Cp/Rwin
+	B(2, 0) = P * H * W / Ci;								// PHW/Ci
+	B(2, 1) = Ap * 0.4 / 2.0 / Ci + Ac * 0.3 / Ci;				// Ap*0.4/2/Ci + Ac*0.3/Ci
+	B(3, 1) = Ac * 0.7 / Cc;									// Ac*0.7/Cc
 }
 
 GrayBox::GrayBox() {
@@ -151,13 +198,13 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 			*/
 
 			// read U
-			U.at<double>(0, r) = dataset[r][64];			// Q_sol
-			U.at<double>(1, r) = dataset[r][65];			// Q_IHG
-			U.at<double>(2, r) = dataset[r][63] + 273.15;	// T_out [Celcius] -> [K]
+			U.at<double>(0, r) = dataset[r][64];		// Q_sol
+			U.at<double>(1, r) = dataset[r][65];		// Q_IHG
+			U.at<double>(2, r) = C2K(dataset[r][63]);	// T_out [Celcius] -> [K]
 
 			// read Y (ground)
-			Y.at<double>(0, r) = dataset[r][66] + 273.15;	// T_p [Celcius] -> [K]
-			Y.at<double>(1, r) = dataset[r][67] + 273.15;	// T_c [Celcius] -> [K]
+			Y.at<double>(0, r) = C2K(dataset[r][67]);	// T_p [Celcius] -> [K]
+			Y.at<double>(1, r) = C2K(dataset[r][66]);	// T_c [Celcius] -> [K]
 		}
 
 		// initialize A, B, C, D
@@ -190,31 +237,33 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		}
 		range_file.close();
 
-		W = 0.5;
-		Ap = Feet2Meter(values[0] - 15) * Feet2Meter(15) * 4;
-		Ac = SQR(Feet2Meter(values[0])) - Ap;
+		W = values[9];
+		//Ap = Feet2Meter(values[0] - 15) * Feet2Meter(15) * 4;
+		Ap = Feet2Meter(Feet2Meter(values[2]));
+		//Ac = SQR(Feet2Meter(values[0])) - Ap;
+		Ac = Feet2Meter(Feet2Meter(values[3]));
 		H = Feet2Meter(10.0);
 		P = Feet2Meter(values[0]) * 4;
 
-		ranges["Ce"] = Range(values[8] * 1055 / 5.0 * 9.0, values[9] * 1055 / 5.0 * 9.0);
-		ranges["Cp"] = Range(values[10] * 1055 / 5.0 * 9.0, values[11] * 1055 / 5.0 * 9.0);
-		ranges["Ci"] = Range(values[12] * 1055 / 5.0 * 9.0, values[13] * 1055 / 5.0 * 9.0);
-		ranges["Cc"] = Range(values[14] * 1055 / 5.0 * 9.0, values[15] * 1055 / 5.0 * 9.0);
-		ranges["R1"] = Range(values[16] * 5.0 / 9.0 / 0.293071, values[17] * 5.0 / 9.0 / 0.293071);
-		ranges["R2"] = Range(values[18] * 5.0 / 9.0 / 0.293071, values[19] * 5.0 / 9.0 / 0.293071);
-		ranges["R3"] = Range(values[20] * 5.0 / 9.0 / 0.293071, values[21] * 5.0 / 9.0 / 0.293071);
-		ranges["R4"] = Range(values[22] * 5.0 / 9.0 / 0.293071, values[23] * 5.0 / 9.0 / 0.293071);
-		ranges["Rwin"] = Range(values[24] * 5.0 / 9.0 / 0.293071, values[25] * 5.0 / 9.0 / 0.293071);
+		ranges["Ce"] = Range(values[10] * 1055 / 5.0 * 9.0, values[11] * 1055 / 5.0 * 9.0);
+		ranges["Cp"] = Range(values[12] * 1055 / 5.0 * 9.0, values[13] * 1055 / 5.0 * 9.0);
+		ranges["Ci"] = Range(values[14] * 1055 / 5.0 * 9.0, values[15] * 1055 / 5.0 * 9.0);
+		ranges["Cc"] = Range(values[16] * 1055 / 5.0 * 9.0, values[17] * 1055 / 5.0 * 9.0);
+		ranges["R1"] = Range(values[18] * 5.0 / 9.0 / 0.293071, values[19] * 5.0 / 9.0 / 0.293071);
+		ranges["R2"] = Range(values[20] * 5.0 / 9.0 / 0.293071, values[21] * 5.0 / 9.0 / 0.293071);
+		ranges["R3"] = Range(values[22] * 5.0 / 9.0 / 0.293071, values[23] * 5.0 / 9.0 / 0.293071);
+		ranges["R4"] = Range(values[24] * 5.0 / 9.0 / 0.293071, values[25] * 5.0 / 9.0 / 0.293071);
+		Rwin = values[26] * 5.0 / 9.0 / 0.293071;
 	}
 }
 
-void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rwin, double& Ce, double& Cp, double& Ci, double& Cc) {
+GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc) {
 	std::cout << "///////////////////////////////////////////////////////////" << std::endl;
 	std::cout << "Inverse computation" << std::endl;
-	std::cout << "initial values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Rwin=" << Rwin << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
+	std::cout << "initial values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
 
 	// パラメータの数
-	const int NUM_PARAMS = 9;
+	const int NUM_PARAMS = 8;
 
 	// 観測データの数
 	int m = Y.rows * Y.cols;
@@ -227,11 +276,10 @@ void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rw
 	x[1] = R2;
 	x[2] = R3;
 	x[3] = R4;
-	x[4] = Rwin;
-	x[5] = Ce;
-	x[6] = Cp;
-	x[7] = Ci;
-	x[8] = Cc;
+	x[4] = Ce;
+	x[5] = Cp;
+	x[6] = Ci;
+	x[7] = Cc;
 
 	// 観測データ（m個）
 	real* y = new real[m];
@@ -267,6 +315,7 @@ void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rw
 	data.Ac = Ac;
 	data.H = H;
 	data.P = P;
+	data.Rwin = Rwin;
 
 	// 観測データの数と同じ値にすることを推奨する
 	int ldfjac = m;
@@ -303,44 +352,59 @@ void GrayBox::inverse(double& R1, double& R2, double& R3, double& R4, double& Rw
 	R2 = x[1];
 	R3 = x[2];
 	R4 = x[3];
-	Rwin = x[4];
-	Ce = x[5];
-	Cp = x[6];
-	Ci = x[7];
-	Cc = x[8];
+	Ce = x[4];
+	Cp = x[5];
+	Ci = x[6];
+	Cc = x[7];
 
-	std::cout << "result values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Rwin=" << Rwin << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
+	std::cout << "result values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
 
 	// メモリ解放
 	delete[] y;
 	delete[] fvec;
 	delete[] fjac;
 	delete[] wa4;
+
+	return GrayBoxResult(fnorm, R1, R2, R3, R4, Ce, Cp, Ci, Cc);
 }
 
-void GrayBox::forward(cv::Mat_<double>& predictedY) {
+void GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY) {
 	predictedY = cv::Mat_<double>(2, U.cols);
 
 	// Xの初期化
 	cv::Mat_<double> x(4, 1);
 	for (int i = 0; i < 4; ++i) {
-		x(i, 0) = 20;// X(i, 0);
+		x(i, 0) = C2K(20);	// X(i, 0);
 	}
 
-	std::cout << "A: " << A << std::endl;
-	std::cout << "B: " << B << std::endl;
-	std::cout << "C: " << C << std::endl;
-	std::cout << "D: " << D << std::endl;
+
+	// build matrix A and B
+	cv::Mat_<double> A(4, 4, 0.0);
+	cv::Mat_<double> B(4, 3, 0.0);
+	buildMatrices(R1, R2, R3, R4, Ce, Cp, Ci, Cc, W, Ap, Ac, H, P, Rwin, A, B);
 
 	// Yを予測する
+	double fnorm = 0.0;
 	for (int t = 0; t < U.cols; ++t) {
+		//std::cout << "U: " << U.col(t) << std::endl;
+
 		// dx/dt = Ax + Bu
 		cv::Mat_<double> dx = A * x + B * U.col(t);
-		x += dx * 60; // 60 min
+		x += dx * 3600; // 1 hour = 3600 sec
 
-		std::cout << x << std::endl;
+		//std::cout << "dx: " << dx << std::endl;
+		//std::cout << "x: " << x << std::endl;
+		std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
 
 		// y = Cx + Du
 		predictedY.col(t) = C * x + D * U.col(t);
+
+		//std::cout << "prediction: " << predictedY.col(t) << ", true: " << Y.col(t) << std::endl;
+
+		for (int k = 0; k < Y.rows; ++k) {
+			fnorm += SQR(Y(k, t) - predictedY(k, t));
+		}
 	}
+
+	std::cout << "fnorm: " << sqrt(fnorm / U.cols) << std::endl;
 }
