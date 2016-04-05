@@ -74,7 +74,7 @@ public:
 
 	void loadTrainingData(const std::string& simulation_filename, const std::string& range_filename);
 	GrayBoxResult inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc);
-	void forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY);
+	double forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY);
 };
 
 

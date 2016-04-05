@@ -15,7 +15,7 @@ Range::Range() {
 Range::Range(double minimum, double maximum) {
 	this->minimum = minimum;
 	this->maximum = maximum;
-	this->step = (maximum - minimum) / 4.0;
+	this->step = (maximum - minimum) / 10.0;
 }
 
 GrayBoxResult::GrayBoxResult(double fnorm, double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc) {
@@ -198,7 +198,8 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 			*/
 
 			// read U
-			U.at<double>(0, r) = dataset[r][64];		// Q_sol
+			//U.at<double>(0, r) = dataset[r][64];		// Q_sol
+			U.at<double>(0, r) = dataset[r][6] * 0.293071 / 0.3048 / 0.3048;	// use horizontal component only for Q_sol
 			U.at<double>(1, r) = dataset[r][65];		// Q_IHG
 			U.at<double>(2, r) = C2K(dataset[r][63]);	// T_out [Celcius] -> [K]
 
@@ -238,29 +239,31 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		range_file.close();
 
 		W = values[9];
-		//Ap = Feet2Meter(values[0] - 15) * Feet2Meter(15) * 4;
-		Ap = Feet2Meter(Feet2Meter(values[2]));
-		//Ac = SQR(Feet2Meter(values[0])) - Ap;
-		Ac = Feet2Meter(Feet2Meter(values[3]));
+		Ap = Feet2Meter(values[0] - 15) * Feet2Meter(15) * 4;
+		//Ap = Feet2Meter(Feet2Meter(values[2]));
+		Ac = SQR(Feet2Meter(values[0] - 15 * 2));
+		//Ac = Feet2Meter(Feet2Meter(values[3]));
 		H = Feet2Meter(10.0);
 		P = Feet2Meter(values[0]) * 4;
 
-		ranges["Ce"] = Range(values[10] * 1055 / 5.0 * 9.0, values[11] * 1055 / 5.0 * 9.0);
-		ranges["Cp"] = Range(values[12] * 1055 / 5.0 * 9.0, values[13] * 1055 / 5.0 * 9.0);
-		ranges["Ci"] = Range(values[14] * 1055 / 5.0 * 9.0, values[15] * 1055 / 5.0 * 9.0);
-		ranges["Cc"] = Range(values[16] * 1055 / 5.0 * 9.0, values[17] * 1055 / 5.0 * 9.0);
-		ranges["R1"] = Range(values[18] * 5.0 / 9.0 / 0.293071, values[19] * 5.0 / 9.0 / 0.293071);
-		ranges["R2"] = Range(values[20] * 5.0 / 9.0 / 0.293071, values[21] * 5.0 / 9.0 / 0.293071);
-		ranges["R3"] = Range(values[22] * 5.0 / 9.0 / 0.293071, values[23] * 5.0 / 9.0 / 0.293071);
-		ranges["R4"] = Range(values[24] * 5.0 / 9.0 / 0.293071, values[25] * 5.0 / 9.0 / 0.293071);
-		Rwin = values[26] * 5.0 / 9.0 / 0.293071;
+		ranges["Ce"] = Range(values[13] * 1055 / 5.0 * 9.0, values[14] * 1055 / 5.0 * 9.0);
+		ranges["Cp"] = Range(values[15] * 1055 / 5.0 * 9.0, values[16] * 1055 / 5.0 * 9.0);
+		ranges["Ci"] = Range(values[17] * 1055 / 5.0 * 9.0, values[18] * 1055 / 5.0 * 9.0);
+		ranges["Cc"] = Range(values[19] * 1055 / 5.0 * 9.0, values[20] * 1055 / 5.0 * 9.0);
+		ranges["R1"] = Range(values[21] * 5.0 / 9.0 / 0.293071, values[22] * 5.0 / 9.0 / 0.293071);
+		ranges["R2"] = Range(values[23] * 5.0 / 9.0 / 0.293071, values[24] * 5.0 / 9.0 / 0.293071);
+		ranges["R3"] = Range(values[25] * 5.0 / 9.0 / 0.293071, values[26] * 5.0 / 9.0 / 0.293071);
+		ranges["R4"] = Range(values[27] * 5.0 / 9.0 / 0.293071, values[28] * 5.0 / 9.0 / 0.293071);
+		Rwin = values[29] * 5.0 / 9.0 / 0.293071;
 	}
 }
 
 GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc) {
+	/*
 	std::cout << "///////////////////////////////////////////////////////////" << std::endl;
 	std::cout << "Inverse computation" << std::endl;
 	std::cout << "initial values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
+	*/
 
 	// パラメータの数
 	const int NUM_PARAMS = 8;
@@ -343,9 +346,11 @@ GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, doubl
 		diag, mode, factor, nprint, &nfev, fjac, ldfjac, ipvt, qtf, wa1, wa2, wa3, wa4);
 	real fnorm = __cminpack_func__(enorm)(m, fvec);
 
+	/*
 	printf(" final l2 norm of the residuals%15.7g\n\n", (double)fnorm);
 	printf(" number of function evaluations%10i\n\n", nfev);
 	printf(" exit parameter %10i\n\n", info);
+	*/
 
 	// 結果を格納する
 	R1 = x[0];
@@ -357,7 +362,7 @@ GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, doubl
 	Ci = x[6];
 	Cc = x[7];
 
-	std::cout << "result values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
+	//std::cout << "result values: R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
 
 	// メモリ解放
 	delete[] y;
@@ -368,7 +373,7 @@ GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, doubl
 	return GrayBoxResult(fnorm, R1, R2, R3, R4, Ce, Cp, Ci, Cc);
 }
 
-void GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY) {
+double GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY) {
 	predictedY = cv::Mat_<double>(2, U.cols);
 
 	// Xの初期化
@@ -376,8 +381,7 @@ void GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, dou
 	for (int i = 0; i < 4; ++i) {
 		x(i, 0) = C2K(20);	// X(i, 0);
 	}
-
-
+	
 	// build matrix A and B
 	cv::Mat_<double> A(4, 4, 0.0);
 	cv::Mat_<double> B(4, 3, 0.0);
@@ -386,25 +390,19 @@ void GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, dou
 	// Yを予測する
 	double fnorm = 0.0;
 	for (int t = 0; t < U.cols; ++t) {
-		//std::cout << "U: " << U.col(t) << std::endl;
-
 		// dx/dt = Ax + Bu
 		cv::Mat_<double> dx = A * x + B * U.col(t);
 		x += dx * 3600; // 1 hour = 3600 sec
 
-		//std::cout << "dx: " << dx << std::endl;
-		//std::cout << "x: " << x << std::endl;
-		std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
+		//std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
 
 		// y = Cx + Du
 		predictedY.col(t) = C * x + D * U.col(t);
-
-		//std::cout << "prediction: " << predictedY.col(t) << ", true: " << Y.col(t) << std::endl;
 
 		for (int k = 0; k < Y.rows; ++k) {
 			fnorm += SQR(Y(k, t) - predictedY(k, t));
 		}
 	}
 
-	std::cout << "fnorm: " << sqrt(fnorm / U.cols) << std::endl;
+	return sqrt(fnorm / U.cols);
 }

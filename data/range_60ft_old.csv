@@ -1,4 +1,0 @@
-Building size,Length,Area_perimtr,Area_core,Specific Heat*Density,,Conductivity,,C_e,,C_p,,C_i,,C_c,,R1,,R2,,R3,,R4,
-,,,,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum,Minimum,Maximum
-ft,ft,ft^2,ft^2,Btu/ft^3*F,Btu/ft^3*F,Btu/hr*ft*F,Btu/hr*ft*F,Btu/F,Btu/F,Btu/F,Btu/F,Btu/F,Btu/F,Btu/F,Btu/F,hr*ft2*°F/Btu,hr*ft2*°F/Btu,hr*ft2*°F/Btu,hr*ft2*°F/Btu,hr*ft2*°F/Btu,hr*ft2*°F/Btu,hr*ft2*°F/Btu,hr*ft2*°F/Btu
-60,2,2400,1200,0.638,30.18,0.017,0.808,0.000001,7656,3062.4,144864,0.000001,5742,1531.2,72432,0.000515677,0.024509804,0.000515677,0.024509804,0.001031353,0.049019608,0.001031353,0.049019608,0.0001,0.04
