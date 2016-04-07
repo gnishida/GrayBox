@@ -15,7 +15,7 @@ Range::Range() {
 Range::Range(double minimum, double maximum) {
 	this->minimum = minimum;
 	this->maximum = maximum;
-	this->step = (maximum - minimum) / 10.0;
+	this->step = (maximum - minimum) / 3.0;
 }
 
 GrayBoxResult::GrayBoxResult(double fnorm, double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc) {
@@ -198,8 +198,8 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 			*/
 
 			// read U
-			//U.at<double>(0, r) = dataset[r][64];		// Q_sol
-			U.at<double>(0, r) = dataset[r][6] * 0.293071 / 0.3048 / 0.3048;	// use horizontal component only for Q_sol
+			U.at<double>(0, r) = dataset[r][64];		// Q_sol
+			//U.at<double>(0, r) = dataset[r][6] * 0.293071 / 0.3048 / 0.3048;	// use horizontal component only for Q_sol
 			U.at<double>(1, r) = dataset[r][65];		// Q_IHG
 			U.at<double>(2, r) = C2K(dataset[r][63]);	// T_out [Celcius] -> [K]
 
@@ -238,7 +238,7 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		}
 		range_file.close();
 
-		W = values[9];
+		W = values[12];
 		Ap = Feet2Meter(values[0] - 15) * Feet2Meter(15) * 4;
 		//Ap = Feet2Meter(Feet2Meter(values[2]));
 		Ac = SQR(Feet2Meter(values[0] - 15 * 2));
@@ -254,7 +254,8 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		ranges["R2"] = Range(values[23] * 5.0 / 9.0 / 0.293071, values[24] * 5.0 / 9.0 / 0.293071);
 		ranges["R3"] = Range(values[25] * 5.0 / 9.0 / 0.293071, values[26] * 5.0 / 9.0 / 0.293071);
 		ranges["R4"] = Range(values[27] * 5.0 / 9.0 / 0.293071, values[28] * 5.0 / 9.0 / 0.293071);
-		Rwin = values[29] * 5.0 / 9.0 / 0.293071;
+		//Rwin = values[29] * 5.0 / 9.0 / 0.293071;
+		Rwin = 0.003;
 	}
 }
 
@@ -387,14 +388,27 @@ double GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, d
 	cv::Mat_<double> B(4, 3, 0.0);
 	buildMatrices(R1, R2, R3, R4, Ce, Cp, Ci, Cc, W, Ap, Ac, H, P, Rwin, A, B);
 
+	/*
+	std::cout << "A: " << A << std::endl;
+	std::cout << "B: " << B << std::endl;
+	std::cout << "C: " << C << std::endl;
+	std::cout << "D: " << D << std::endl;
+	*/
+
 	// Yを予測する
 	double fnorm = 0.0;
 	for (int t = 0; t < U.cols; ++t) {
+		//std::cout << "x: " << x << std::endl;
+		//std::cout << "u: " << U.col(t) << std::endl;
+
+
 		// dx/dt = Ax + Bu
 		cv::Mat_<double> dx = A * x + B * U.col(t);
 		x += dx * 3600; // 1 hour = 3600 sec
 
-		//std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
+		//std::cout << "dx: " << dx << std::endl;
+
+		std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
 
 		// y = Cx + Du
 		predictedY.col(t) = C * x + D * U.col(t);

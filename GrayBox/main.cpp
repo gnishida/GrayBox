@@ -15,21 +15,19 @@ int main(int argc, char* argv[]) {
 	GrayBox gb;
 	gb.loadTrainingData("../data/simulation_60ft.csv", "../data/range_60ft.csv");
 
-	gb.Rwin = 0.01;
-
 	// forward test
 	cv::Mat_<double> predictedY;
-	/*
-	gb.forward((gb.ranges["R1"].minimum + gb.ranges["R1"].maximum) * 0.5,		
-		(gb.ranges["R2"].minimum + gb.ranges["R2"].maximum) * 0.5,
-		(gb.ranges["R3"].minimum + gb.ranges["R3"].maximum) * 0.5,
-		(gb.ranges["R4"].minimum + gb.ranges["R4"].maximum) * 0.5,
-		(gb.ranges["Ce"].minimum + gb.ranges["Ce"].maximum) * 0.5,
-		(gb.ranges["Cp"].minimum + gb.ranges["Cp"].maximum) * 0.5,
-		(gb.ranges["Ci"].minimum + gb.ranges["Ci"].maximum) * 0.5,
-		(gb.ranges["Cc"].minimum + gb.ranges["Cc"].maximum) * 0.5,
+	double fnorm = gb.forward(
+		0.002,		
+		0.004,
+		0.0008,
+		0.004,
+		22727800,
+		3973900,
+		54363900,
+		2991300,
 		predictedY);
-	*/
+	std::cout << "Fnorm: " << fnorm << std::endl;
 	/*
 	gb.forward((gb.ranges["R1"].minimum + gb.ranges["R1"].maximum) * 0.5,
 		(gb.ranges["R2"].minimum + gb.ranges["R2"].maximum) * 0.5, 
@@ -41,6 +39,8 @@ int main(int argc, char* argv[]) {
 		(gb.ranges["Cc"].minimum + gb.ranges["Cc"].maximum) * 0.5,
 		predictedY);
 	*/
+
+	return 0;
 
 	// GrayBox
 	/*
@@ -62,19 +62,19 @@ int main(int argc, char* argv[]) {
 	double min_R1, min_R2, min_R3, min_R4, min_Ce, min_Cp, min_Ci, min_Cc;
 
 	int progress_count = 0;
-	for (double R1 = gb.ranges["R1"].minimum + gb.ranges["R1"].step; R1 < gb.ranges["R1"].maximum - gb.ranges["R1"].step * 0.5; R1 += gb.ranges["R1"].step) {
-		for (double R2 = gb.ranges["R2"].minimum + gb.ranges["R2"].step; R2 < gb.ranges["R2"].maximum - gb.ranges["R2"].step * 0.5; R2 += gb.ranges["R2"].step) {
-			for (double R3 = gb.ranges["R3"].minimum + gb.ranges["R3"].step; R3 < gb.ranges["R3"].maximum - gb.ranges["R3"].step * 0.5; R3 += gb.ranges["R3"].step) {
-				for (double R4 = gb.ranges["R4"].minimum + gb.ranges["R4"].step; R4 < gb.ranges["R4"].maximum - gb.ranges["R4"].step * 0.5; R4 += gb.ranges["R4"].step) {
-					//std::cout << progress_count + 1 << "/81 ..." << std::endl;
+	for (double R1 = gb.ranges["R1"].minimum; R1 < gb.ranges["R1"].maximum + gb.ranges["R1"].step * 0.5; R1 += gb.ranges["R1"].step) {
+		for (double R2 = gb.ranges["R2"].minimum; R2 < gb.ranges["R2"].maximum + gb.ranges["R2"].step * 0.5; R2 += gb.ranges["R2"].step) {
+			for (double R3 = gb.ranges["R3"].minimum; R3 < gb.ranges["R3"].maximum + gb.ranges["R3"].step * 0.5; R3 += gb.ranges["R3"].step) {
+				for (double R4 = gb.ranges["R4"].minimum; R4 < gb.ranges["R4"].maximum + gb.ranges["R4"].step * 0.5; R4 += gb.ranges["R4"].step) {
+					std::cout << progress_count + 1 << "/256..." << std::endl;
 
-					for (double Ce = gb.ranges["Ce"].minimum + gb.ranges["Ce"].step; Ce < gb.ranges["Ce"].maximum - gb.ranges["Ce"].step * 0.5; Ce += gb.ranges["Ce"].step) {
-						for (double Cp = gb.ranges["Cp"].minimum + gb.ranges["Cp"].step; Cp < gb.ranges["Cp"].maximum - gb.ranges["Cp"].step * 0.5; Cp += gb.ranges["Cp"].step) {
-							for (double Ci = gb.ranges["Ci"].minimum + gb.ranges["Ci"].step; Ci < gb.ranges["Ci"].maximum - gb.ranges["Ci"].step * 0.5; Ci += gb.ranges["Ci"].step) {
-								for (double Cc = gb.ranges["Cc"].minimum + gb.ranges["Cc"].step; Cc < gb.ranges["Cc"].maximum - gb.ranges["Cc"].step * 0.5; Cc += gb.ranges["Cc"].step) {
+					for (double Ce = gb.ranges["Ce"].minimum; Ce < gb.ranges["Ce"].maximum + gb.ranges["Ce"].step * 0.5; Ce += gb.ranges["Ce"].step) {
+						for (double Cp = gb.ranges["Cp"].minimum; Cp < gb.ranges["Cp"].maximum + gb.ranges["Cp"].step * 0.5; Cp += gb.ranges["Cp"].step) {
+							for (double Ci = gb.ranges["Ci"].minimum; Ci < gb.ranges["Ci"].maximum + gb.ranges["Ci"].step * 0.5; Ci += gb.ranges["Ci"].step) {
+								for (double Cc = gb.ranges["Cc"].minimum; Cc < gb.ranges["Cc"].maximum + gb.ranges["Cc"].step * 0.5; Cc += gb.ranges["Cc"].step) {
 									double norm = gb.forward(R1, R2, R3, R4, Ce, Cp, Ci, Cc, predictedY);
 									if (norm < min_fnorm) {
-										std::cout << "min_fnorm: " << norm << std::endl;
+										std::cout << "min_fnorm: " << norm << ", R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
 										min_fnorm = norm;
 										min_R1 = R1;
 										min_R2 = R2;
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
 						}
 					}
 
-					//progress_count++;
+					progress_count++;
 				}
 			}
 		}
