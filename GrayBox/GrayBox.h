@@ -67,14 +67,14 @@ public:
 	double Ac;				// area of core zone
 	double H;				// height
 	double P;				// perimeter
-	double Rwin;			// Rwin
+	//double Rwin;			// Rwin
 
 public:
 	GrayBox();
 
 	void loadTrainingData(const std::string& simulation_filename, const std::string& range_filename);
-	GrayBoxResult inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc);
-	double forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY);
+	GrayBoxResult inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, double Rwin);
+	double forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, double Rwin, double q_sol_factor, cv::Mat_<double>& predictedY);
 };
 
 

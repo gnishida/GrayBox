@@ -17,6 +17,7 @@ int main(int argc, char* argv[]) {
 
 	// forward test
 	cv::Mat_<double> predictedY;
+	/*
 	double fnorm = gb.forward(
 		0.002,		
 		0.004,
@@ -28,6 +29,7 @@ int main(int argc, char* argv[]) {
 		2991300,
 		predictedY);
 	std::cout << "Fnorm: " << fnorm << std::endl;
+	*/
 	/*
 	gb.forward((gb.ranges["R1"].minimum + gb.ranges["R1"].maximum) * 0.5,
 		(gb.ranges["R2"].minimum + gb.ranges["R2"].maximum) * 0.5, 
@@ -39,8 +41,6 @@ int main(int argc, char* argv[]) {
 		(gb.ranges["Cc"].minimum + gb.ranges["Cc"].maximum) * 0.5,
 		predictedY);
 	*/
-
-	return 0;
 
 	// GrayBox
 	/*
@@ -72,24 +72,28 @@ int main(int argc, char* argv[]) {
 						for (double Cp = gb.ranges["Cp"].minimum; Cp < gb.ranges["Cp"].maximum + gb.ranges["Cp"].step * 0.5; Cp += gb.ranges["Cp"].step) {
 							for (double Ci = gb.ranges["Ci"].minimum; Ci < gb.ranges["Ci"].maximum + gb.ranges["Ci"].step * 0.5; Ci += gb.ranges["Ci"].step) {
 								for (double Cc = gb.ranges["Cc"].minimum; Cc < gb.ranges["Cc"].maximum + gb.ranges["Cc"].step * 0.5; Cc += gb.ranges["Cc"].step) {
-									double norm = gb.forward(R1, R2, R3, R4, Ce, Cp, Ci, Cc, predictedY);
-									if (norm < min_fnorm) {
-										std::cout << "min_fnorm: " << norm << ", R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << std::endl;
-										min_fnorm = norm;
-										min_R1 = R1;
-										min_R2 = R2;
-										min_R3 = R3;
-										min_R4 = R4;
-										min_Ce = Ce;
-										min_Cp = Cp;
-										min_Ci = Ci;
-										min_Cc = Cc;
-									}
+									for (double Rwin = 0.003; Rwin < 0.05; Rwin += 0.008) {
+										for (double q_sol_factor = 0.05; q_sol_factor < 1.1; q_sol_factor += 0.06) {
+											double norm = gb.forward(R1, R2, R3, R4, Ce, Cp, Ci, Cc, Rwin, q_sol_factor, predictedY);
+											if (norm < min_fnorm) {
+												std::cout << "min_fnorm: " << norm << std::endl;
+												std::cout << "R1=" << R1 << ", R2=" << R2 << ", R3=" << R3 << ", R4=" << R4 << ", Ce=" << Ce << ", Cp=" << Cp << ", Ci=" << Ci << ", Cc=" << Cc << ", Rwin=" << Rwin << ", q_sol_factor=" << q_sol_factor << std::endl;
+												std::cout << std::endl;
+												min_fnorm = norm;
+												min_R1 = R1;
+												min_R2 = R2;
+												min_R3 = R3;
+												min_R4 = R4;
+												min_Ce = Ce;
+												min_Cp = Cp;
+												min_Ci = Ci;
+												min_Cc = Cc;
+											}
 
-									/*
-									if (rand() % 20 == 0) {
-										GrayBoxResult result = gb.inverse(R1, R2, R3, R4, Ce, Cp, Ci, Cc);
-										if (result.fnorm < min_fnorm) {
+											/*
+											if (rand() % 20 == 0) {
+											GrayBoxResult result = gb.inverse(R1, R2, R3, R4, Ce, Cp, Ci, Cc);
+											if (result.fnorm < min_fnorm) {
 											std::cout << "min_fnorm: " << result.fnorm << std::endl;
 											min_fnorm = result.fnorm;
 											min_R1 = result.R1;
@@ -100,9 +104,11 @@ int main(int argc, char* argv[]) {
 											min_Cp = result.Cp;
 											min_Ci = result.Ci;
 											min_Cc = result.Cc;
+											}
+											}
+											*/
 										}
 									}
-									*/
 								}
 							}
 						}
@@ -117,6 +123,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Best fnorm: " << min_fnorm << std::endl;
 	std::cout << "result values: R1=" << min_R1 << ", R2=" << min_R2 << ", R3=" << min_R3 << ", R4=" << min_R4 << ", Ce=" << min_Ce << ", Cp=" << min_Cp << ", Ci=" << min_Ci << ", Cc=" << min_Cc << std::endl;
 
+	/*
 	GrayBoxResult result = gb.inverse(min_R1, min_R2, min_R3, min_R4, min_Ce, min_Cp, min_Ci, min_Cc);
 	std::cout << "After the optimization: " << result.fnorm << std::endl;
 	std::cout << "result values: R1=" << result.R1 << ", R2=" << result.R2 << ", R3=" << result.R3 << ", R4=" << result.R4 << ", Ce=" << result.Ce << ", Cp=" << result.Cp << ", Ci=" << result.Ci << ", Cc=" << result.Cc << std::endl;
@@ -135,6 +142,7 @@ int main(int argc, char* argv[]) {
 		}
 		std::cout << "norm: " << sqrt(norm / predictedY.cols) << std::endl;
 	}
+	*/
 
 	return 0;
 }

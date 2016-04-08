@@ -255,11 +255,11 @@ void GrayBox::loadTrainingData(const std::string& simulation_filename, const std
 		ranges["R3"] = Range(values[25] * 5.0 / 9.0 / 0.293071, values[26] * 5.0 / 9.0 / 0.293071);
 		ranges["R4"] = Range(values[27] * 5.0 / 9.0 / 0.293071, values[28] * 5.0 / 9.0 / 0.293071);
 		//Rwin = values[29] * 5.0 / 9.0 / 0.293071;
-		Rwin = 0.003;
+		//Rwin = 0.003;
 	}
 }
 
-GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc) {
+GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, double Rwin) {
 	/*
 	std::cout << "///////////////////////////////////////////////////////////" << std::endl;
 	std::cout << "Inverse computation" << std::endl;
@@ -374,7 +374,7 @@ GrayBoxResult GrayBox::inverse(double R1, double R2, double R3, double R4, doubl
 	return GrayBoxResult(fnorm, R1, R2, R3, R4, Ce, Cp, Ci, Cc);
 }
 
-double GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, cv::Mat_<double>& predictedY) {
+double GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, double Cp, double Ci, double Cc, double Rwin, double q_sol_factor, cv::Mat_<double>& predictedY) {
 	predictedY = cv::Mat_<double>(2, U.cols);
 
 	// Xの初期化
@@ -401,6 +401,8 @@ double GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, d
 		//std::cout << "x: " << x << std::endl;
 		//std::cout << "u: " << U.col(t) << std::endl;
 
+		U(0, t) *= q_sol_factor;
+
 
 		// dx/dt = Ax + Bu
 		cv::Mat_<double> dx = A * x + B * U.col(t);
@@ -408,7 +410,7 @@ double GrayBox::forward(double R1, double R2, double R3, double R4, double Ce, d
 
 		//std::cout << "dx: " << dx << std::endl;
 
-		std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
+		//std::cout << x(0, 0) << "," << x(1, 0) << "," << x(2, 0) << "," << x(3, 0) << std::endl;
 
 		// y = Cx + Du
 		predictedY.col(t) = C * x + D * U.col(t);
